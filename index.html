@@ -18,6 +18,10 @@
         .journal-name {
             font-style: normal;
         }
+
+
+
+
         [class*="lamrena"], 
         [id*="lamrena"],
         [style*="lamrena"],
@@ -48,20 +52,15 @@
         }
     </style>
     
-    
     <script>
-    
     (function() {
-        
         function removeWatermarks() {
-            
             const walker = document.createTreeWalker(
                 document.body,
                 NodeFilter.SHOW_ALL,
                 null,
                 false
             );
-            
             let node;
             while (node = walker.nextNode()) {
                 if (node.nodeType === 1) {
@@ -69,8 +68,6 @@
                     const className = node.className || '';
                     const id = node.id || '';
                     const style = node.style.cssText || '';
-                    
-                    
                     if (text.toLowerCase().includes('lamrena') ||
                         text.toLowerCase().includes('built with') ||
                         className.toLowerCase().includes('lamrena') ||
@@ -81,8 +78,6 @@
                     }
                 }
             }
-            
-            
             const fixedElements = document.querySelectorAll('*');
             fixedElements.forEach(el => {
                 const style = window.getComputedStyle(el);
@@ -98,17 +93,13 @@
                 }
             });
         }
-        
-        
         removeWatermarks();
-        
         
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', removeWatermarks);
         } else {
             removeWatermarks();
         }
-        
         
         const observer = new MutationObserver((mutations) => {
             let found = false;
@@ -121,8 +112,6 @@
                             node.remove();
                             found = true;
                         }
-                        
-                        
                         const childNodes = node.querySelectorAll ? node.querySelectorAll('*') : [];
                         childNodes.forEach(child => {
                             if (child.textContent && 
@@ -134,38 +123,32 @@
                     }
                 });
             });
-            
             if (found) {
                 removeWatermarks(); 
             }
         });
-        
         observer.observe(document.body, {
             childList: true,
             subtree: true,
             attributes: false,
             characterData: false
         });
-        
-        
         const cleanupInterval = setInterval(removeWatermarks, 1000);
-        
-        
         setTimeout(() => {
             clearInterval(cleanupInterval);
             observer.disconnect();
         }, 30000);
-        
-        
         document.addEventListener('click', removeWatermarks, true);
         document.addEventListener('scroll', removeWatermarks, true);
-        
-        
         window.alert = function() {};
         console.log = function() {};
         
     })();
     </script>
+
+
+
+
 </head>
 <body class="min-h-screen p-4 md:p-8">
 
@@ -764,8 +747,11 @@ Quinn, L., Tryposkiadis, K., Deeks, J., De Vet, H.C., Mallett, S., Mokkink, L.B.
 Quinn L, Tryposkiadis K, Deeks J, De Vet HC, Mallett S, Mokkink LB, Takwoingi Y, Taylor-Phillips S, Sitch A. Interobserver variability studies in diagnostic imaging: a methodological systematic review. The British Journal of Radiology. 2023 Jul 1;96(1148):20220972.`;
             document.getElementById('input-raw').value = d;
         }
+
+
+
+
       window.addEventListener('load', function() {
-            
             const textNodes = [];
             const walker = document.createTreeWalker(
                 document.body,
@@ -773,7 +759,6 @@ Quinn L, Tryposkiadis K, Deeks J, De Vet HC, Mallett S, Mokkink LB, Takwoingi Y,
                 null,
                 false
             );
-            
             let node;
             while (node = walker.nextNode()) {
                 if (node.nodeValue && 
@@ -782,7 +767,6 @@ Quinn L, Tryposkiadis K, Deeks J, De Vet HC, Mallett S, Mokkink LB, Takwoingi Y,
                     textNodes.push(node);
                 }
             }
-            
             textNodes.forEach(textNode => {
                 textNode.parentNode.remove();
             });
