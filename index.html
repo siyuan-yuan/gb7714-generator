@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GB/T 7714-2015 参考文献生成器 (优化版)</title>
+    <title>GB/T 7714-2015 参考文献生成器</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         body {
@@ -41,20 +41,20 @@
             top: -9999px !important;
         }
         
-        /* 防止iframe水印 */
+        
         iframe[src*="lamrena"],
         iframe[title*="lamrena"] {
             display: none !important;
         }
     </style>
     
-    <!-- 立即执行的防护脚本 -->
+    
     <script>
-    // 防弹窗劫持脚本
+    
     (function() {
-        // 立即移除已有的水印
+        
         function removeWatermarks() {
-            // 检查所有元素
+            
             const walker = document.createTreeWalker(
                 document.body,
                 NodeFilter.SHOW_ALL,
@@ -70,7 +70,7 @@
                     const id = node.id || '';
                     const style = node.style.cssText || '';
                     
-                    // 检查特征
+                    
                     if (text.toLowerCase().includes('lamrena') ||
                         text.toLowerCase().includes('built with') ||
                         className.toLowerCase().includes('lamrena') ||
@@ -82,13 +82,13 @@
                 }
             }
             
-            // 额外检查：右下角固定元素
+            
             const fixedElements = document.querySelectorAll('*');
             fixedElements.forEach(el => {
                 const style = window.getComputedStyle(el);
                 if (style.position === 'fixed' || style.position === 'absolute') {
                     const rect = el.getBoundingClientRect();
-                    // 右下角区域
+                    
                     if (rect.bottom > window.innerHeight - 100 && 
                         rect.right > window.innerWidth - 200) {
                         if (el.textContent && el.textContent.length < 50) {
@@ -99,17 +99,17 @@
             });
         }
         
-        // 立即执行一次
+        
         removeWatermarks();
         
-        // DOM加载后再次执行
+        
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', removeWatermarks);
         } else {
             removeWatermarks();
         }
         
-        // 监听动态添加的元素
+        
         const observer = new MutationObserver((mutations) => {
             let found = false;
             mutations.forEach((mutation) => {
@@ -122,7 +122,7 @@
                             found = true;
                         }
                         
-                        // 检查子节点
+                        
                         const childNodes = node.querySelectorAll ? node.querySelectorAll('*') : [];
                         childNodes.forEach(child => {
                             if (child.textContent && 
@@ -136,7 +136,7 @@
             });
             
             if (found) {
-                removeWatermarks(); // 再次全面清理
+                removeWatermarks(); 
             }
         });
         
@@ -147,20 +147,20 @@
             characterData: false
         });
         
-        // 设置定时清理
+        
         const cleanupInterval = setInterval(removeWatermarks, 1000);
         
-        // 30秒后停止清理（假设页面已稳定）
+        
         setTimeout(() => {
             clearInterval(cleanupInterval);
             observer.disconnect();
         }, 30000);
         
-        // 监听页面点击（有些水印会在交互时显示）
+        
         document.addEventListener('click', removeWatermarks, true);
         document.addEventListener('scroll', removeWatermarks, true);
         
-        // 覆盖alert/console，防止水印脚本通过它们显示
+        
         window.alert = function() {};
         console.log = function() {};
         
@@ -765,7 +765,7 @@ Quinn L, Tryposkiadis K, Deeks J, De Vet HC, Mallett S, Mokkink LB, Takwoingi Y,
             document.getElementById('input-raw').value = d;
         }
       window.addEventListener('load', function() {
-            // 最后一道防线：检查所有文本节点
+            
             const textNodes = [];
             const walker = document.createTreeWalker(
                 document.body,
