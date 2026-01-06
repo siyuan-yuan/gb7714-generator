@@ -119,17 +119,25 @@
             return mergedAuthors;
         }
 
-        function formatAuthors(authorStr) {
+        function formatAuthors(authorStr, lang = 'en') {
             let parsed = parseAuthorsToObjects(authorStr);
             let formatted = parsed.map(a => {
                 let s = a.surname.toUpperCase();
                 let n = a.name ? a.name.split(/[\s\.\-]+/).map(p => p.charAt(0).toUpperCase()).join(' ') : "";
                 return (s + " " + n).trim();
             });
+            // GB/T 7714-2015: More than 3 authors -> show first 3 + ", 等" (Chinese) or ", et al" (English)
             if (formatted.length > 3 || (parsed.hasEtAl && formatted.length >= 1)) {
-                return formatted.slice(0, 3).join(', ') + ", et al";
+                const suffix = lang === 'zh' ? ", 等" : ", et al";
+                return formatted.slice(0, 3).join(', ') + suffix;
             }
             return formatted.join(', ');
+        }
+
+        // Detect if text is primarily Chinese
+        function detectLanguage(text) {
+            const chineseChars = (text.match(/[一-龥]/g) || []).length;
+            return chineseChars > 5 ? 'zh' : 'en';
         }
 
         // --- Parser 1: APA Conference/Book Chapter (你的新输入格式) ---
@@ -259,8 +267,26 @@
         }
 
         // --- Output Generation ---
-        function formatGBT(data, idx) {
-            let authors = formatAuthors(data.authors);
+        // Validate parsed data - returns error message if invalid, null if valid
+        function validateParsedData(data) {
+            if (!data.authors || !data.authors.trim()) {
+                return "缺少作者信息";
+            }
+            if (!data.title || !data.title.trim()) {
+                return "缺少标题信息";
+            }
+            if (!data.year || !data.year.trim()) {
+                return "缺少年份信息";
+            }
+            // For conference papers (C) and book chapters (M with source), pages are required per GB/T 7714-2015
+            if ((data.type === 'C' || (data.type === 'M' && data.source)) && (!data.pages || !data.pages.trim())) {
+                return "会议论文或专著中的章节必须著录起止页码";
+            }
+            return null;
+        }
+
+        function formatGBT(data, idx, lang = 'en') {
+            let authors = formatAuthors(data.authors, lang);
             let title = data.title.replace(/\.$/, '');
             let source = data.source.replace(/^[.,\s]+|[.,\s]+$/g, '');
             // Capitalize Source
@@ -270,9 +296,10 @@
             if (data.type === 'C' || data.type === 'M') {
                 let pub = data.city ? `${data.city}: ${data.publisher}` : data.publisher;
                 let pageStr = data.pages ? `: ${data.pages}` : "";
-                // GB/T Format for C/M: Source. City: Publisher, Year: Pages.
-                plain = `[${idx}] ${authors}. ${title}[${data.type}]. ${source}. ${pub}, ${data.year}${pageStr}.`;
-                html = `[${idx}] ${authors}. ${title}[${data.type}]. <span class="journal-name">${source}</span>. ${pub}, ${data.year}${pageStr}.`;
+                // GB/T 7714-2015 Format for C/M: Title[Type]//Source. City: Publisher, Year: Pages.
+                // Note: Use "//" to connect 析出文献 (paper title) and 源文献 (conference/book name)
+                plain = `[${idx}] ${authors}. ${title}[${data.type}]//${source}. ${pub}, ${data.year}${pageStr}.`;
+                html = `[${idx}] ${authors}. ${title}[${data.type}]//<span class="journal-name">${source}</span>. ${pub}, ${data.year}${pageStr}.`;
             } else {
                 let volStr = data.vol ? `, ${data.vol}` : "";
                 let pageStr = data.pages ? `: ${data.pages}` : "";
@@ -308,19 +335,30 @@
 
             lines.forEach((line, i) => {
                 let clean = line.replace(/^(\[\d+\]|\d+\.)\s*/, '').trim();
+                // Detect language for author formatting
+                const lang = detectLanguage(clean);
+
                 // 优先级: 1. APA会议 2. MLA会议/书 3. 期刊
                 let parsed = parseAPA_Conference(clean);
                 if (!parsed) parsed = parseMLA_Book_Conf(clean);
                 if (!parsed) parsed = parseStandardJournal(clean);
 
                 if (parsed) {
-                    let res = formatGBT(parsed, i+1);
+                    // Validate the parsed data before formatting
+                    const validationError = validateParsedData(parsed);
+                    if (validationError) {
+                        html.push(`<div class="text-red-600 bg-red-50 p-2 rounded">[Error] 行 ${i+1}: ${validationError}</div>`);
+                        plain.push(`[ERROR] Line ${i+1}: ${validationError}`);
+                        return;
+                    }
+                    let res = formatGBT(parsed, i+1, lang);
                     html.push(`<div class="p-2 hover:bg-gray-100 rounded">${res.html}</div>`);
                     plain.push(res.plain);
                     bib.push(formatBibTeX(parsed, i+1));
                 } else {
-                    html.push(`<div class="text-red-600 bg-red-50 p-2 rounded">[Error] 行 ${i+1} 格式未识别</div>`);
-                    plain.push(`[ERROR] Line ${i+1}`);
+                    // Format not recognized - report error instead of forcing conversion
+                    html.push(`<div class="text-red-600 bg-red-50 p-2 rounded">[Error] 行 ${i+1}: 格式未识别，无法解析。请检查输入格式是否符合 APA/MLA/标准期刊格式。</div>`);
+                    plain.push(`[ERROR] Line ${i+1}: Format not recognized`);
                 }
             });
 
@@ -331,7 +369,6 @@
         }
         
         function convertManual() {
-            // Same manual logic as before...
             const d = {
                 authors: document.getElementById('man-author').value,
                 title: document.getElementById('man-title').value,
@@ -343,7 +380,21 @@
                 city: document.getElementById('man-city').value,
                 publisher: document.getElementById('man-publisher').value
             };
-            let res = formatGBT(d, 1);
+
+            // Validate the data
+            const validationError = validateParsedData(d);
+            if (validationError) {
+                document.getElementById('output-content-html').innerHTML = `<div class="text-red-600 bg-red-50 p-2 rounded">[Error] ${validationError}</div>`;
+                document.getElementById('output-content-text').value = `[ERROR] ${validationError}`;
+                document.getElementById('output-bibtex').innerText = '';
+                document.getElementById('output-container').classList.remove('hidden');
+                return;
+            }
+
+            // Detect language for author formatting
+            const lang = detectLanguage(d.authors + d.title + d.source);
+
+            let res = formatGBT(d, 1, lang);
             document.getElementById('output-content-html').innerHTML = res.html;
             document.getElementById('output-content-text').value = res.plain;
             document.getElementById('output-bibtex').innerText = formatBibTeX(d, 1);
@@ -357,7 +408,7 @@
 
         function loadDemo() {
             document.getElementById('input-raw').value = `Acebes, C., Moustafa, A. H., Camara, O., & Galdran, A. (2024, October). The centerline-cross entropy loss for vessel-like structure segmentation: Better topology consistency without sacrificing accuracy. In International Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 710-720). Cham: Springer Nature Switzerland.
-Acebes, Cesar, et al. "The centerline-cross entropy loss for vessel-like structure segmentation." International Conference on Medical Image Computing and Computer-Assisted Intervention. Cham: Springer Nature Switzerland, 2024.`;
+Smith, J. (2023). Deep learning for medical imaging. Journal of AI Research, 45(3), 234-251.`;
         }
     </script>
 </body>
