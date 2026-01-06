@@ -5,87 +5,429 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GB/T 7714-2015 参考文献生成器 (全能版)</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: -apple-system, system-ui, sans-serif; background-color: #f3f4f6; }
-        .reference-output { font-family: "Times New Roman", serif; line-height: 1.6; }
-        .journal-name { font-style: normal; }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --gradient-start: #6366f1;
+            --gradient-end: #8b5cf6;
+        }
+        
+        body { 
+            font-family: 'Inter', -apple-system, system-ui, sans-serif; 
+            background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 50%, #fff1f2 100%);
+            min-height: 100vh;
+        }
+        
+        .reference-output { 
+            font-family: "Times New Roman", Georgia, serif; 
+            line-height: 1.8; 
+        }
+        
+        .journal-name { 
+            font-style: italic; 
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .gradient-header {
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+        }
+        
+        .btn-secondary {
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-field {
+            transition: all 0.3s ease;
+            border: 2px solid #e5e7eb;
+        }
+        
+        .input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+        
+        .tab-btn {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 3px 3px 0 0;
+        }
+        
+        .output-card {
+            background: linear-gradient(145deg, #fafbff 0%, #f8f9fc 100%);
+            border: 1px solid rgba(99, 102, 241, 0.1);
+        }
+        
+        .reference-item {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .reference-item:hover {
+            background: rgba(99, 102, 241, 0.05);
+            border-left-color: var(--primary);
+        }
+        
+        .floating-icon {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .pulse-dot {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .copy-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .copy-btn:hover {
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .bibtex-output {
+            background: linear-gradient(145deg, #1e1e2e 0%, #2d2d3f 100%);
+            color: #a6e3a1;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        }
+        
+        .decorated-border {
+            position: relative;
+        }
+        
+        .decorated-border::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end), #ec4899);
+            border-radius: 12px 12px 0 0;
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 md:p-8">
+    <!-- Decorative Background Elements -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-20 left-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 floating-icon"></div>
+        <div class="absolute top-40 right-10 w-72 h-72 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 floating-icon" style="animation-delay: 2s;"></div>
+        <div class="absolute bottom-20 left-1/3 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 floating-icon" style="animation-delay: 4s;"></div>
+    </div>
 
-    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
-        <header class="bg-indigo-700 p-6 text-white">
-            <h1 class="text-2xl font-bold">GB/T 7714-2015 参考文献生成器</h1>
-            <p class="text-indigo-100 mt-2">支持 APA, MLA, IEEE 等多种期刊与会议格式</p>
-        </header>
-
-        <main class="p-6 space-y-8">
-            <!-- Mode Toggle -->
-            <div class="flex border-b border-gray-200">
-                <button id="tab-auto" class="px-6 py-3 text-indigo-700 border-b-2 border-indigo-700 font-medium" onclick="switchTab('auto')">智能转换</button>
-                <button id="tab-manual" class="px-6 py-3 text-gray-500 font-medium" onclick="switchTab('manual')">手动录入</button>
-            </div>
-
-            <!-- Auto Convert Section -->
-            <div id="section-auto" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">输入参考文献 (每行一条):</label>
-                    <textarea id="input-raw" rows="8" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="粘贴参考文献..."></textarea>
+    <div class="max-w-4xl mx-auto relative">
+        <!-- Main Card -->
+        <div class="glass-card rounded-3xl shadow-2xl overflow-hidden decorated-border">
+            <!-- Header -->
+            <header class="gradient-header p-8 text-white relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10">
+                    <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <defs>
+                            <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" stroke-width="0.5"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100" height="100" fill="url(#grid)"/>
+                    </svg>
                 </div>
-                <div class="flex gap-3">
-                    <button onclick="convertRaw()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-lg shadow-md">转换格式</button>
-                    <button onclick="loadDemo()" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium py-2 px-6 rounded-lg">填入示例</button>
-                </div>
-            </div>
-
-            <!-- Manual Input Section -->
-            <div id="section-manual" class="space-y-4 hidden">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700">文献类型</label>
-                        <select id="man-type" class="block w-full border border-gray-300 rounded-md p-2">
-                            <option value="J">期刊文章 [J]</option>
-                            <option value="C">会议论文 [C]</option>
-                            <option value="M">专著/书籍 [M]</option>
-                        </select>
+                <div class="relative">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl md:text-3xl font-bold tracking-tight">GB/T 7714-2015</h1>
+                            <p class="text-white/80 text-sm md:text-base">参考文献格式生成器</p>
+                        </div>
                     </div>
-                    <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700">作者</label><input type="text" id="man-author" class="block w-full border border-gray-300 rounded-md p-2"></div>
-                    <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700">题名</label><input type="text" id="man-title" class="block w-full border border-gray-300 rounded-md p-2"></div>
-                    <div class="md:col-span-2"><label class="block text-sm font-medium text-gray-700">来源(刊名/会议)</label><input type="text" id="man-source" class="block w-full border border-gray-300 rounded-md p-2"></div>
-                    <div><label class="block text-sm font-medium text-gray-700">年份</label><input type="text" id="man-year" class="block w-full border border-gray-300 rounded-md p-2"></div>
-                    <div><label class="block text-sm font-medium text-gray-700">卷(期)</label><input type="text" id="man-vol" class="block w-full border border-gray-300 rounded-md p-2"></div>
-                    <div><label class="block text-sm font-medium text-gray-700">出版地 (书籍/会议)</label><input type="text" id="man-city" class="block w-full border border-gray-300 rounded-md p-2"></div>
-                    <div><label class="block text-sm font-medium text-gray-700">出版社 (书籍/会议)</label><input type="text" id="man-publisher" class="block w-full border border-gray-300 rounded-md p-2"></div>
-                    <div><label class="block text-sm font-medium text-gray-700">页码</label><input type="text" id="man-pages" class="block w-full border border-gray-300 rounded-md p-2"></div>
-                </div>
-                <button onclick="convertManual()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg mt-4">生成引用</button>
-            </div>
-
-            <!-- Output Section -->
-            <div id="output-container" class="bg-gray-50 rounded-lg p-4 border border-gray-200 hidden space-y-6">
-                <div>
-                    <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-lg font-semibold text-gray-800">GB/T 7714-2015</h3>
-                        <button onclick="copyOutput('output-content-text')" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium bg-white px-2 py-1 rounded border border-indigo-200">复制文本</button>
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        <span class="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">APA</span>
+                        <span class="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">MLA</span>
+                        <span class="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">IEEE</span>
+                        <span class="px-3 py-1 bg-white/20 rounded-full text-sm backdrop-blur-sm">BibTeX</span>
                     </div>
-                    <div id="output-content-html" class="reference-output text-gray-800 space-y-3 border-b pb-4 border-gray-200 pl-2"></div>
-                    <textarea id="output-content-text" class="hidden"></textarea>
                 </div>
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">BibTeX</h3>
-                    <div id="output-bibtex" class="font-mono text-sm text-gray-700 bg-gray-100 p-3 rounded overflow-x-auto whitespace-pre border border-gray-200"></div>
+            </header>
+
+            <main class="p-6 md:p-8 space-y-8">
+                <!-- Mode Toggle -->
+                <div class="flex gap-2 p-1.5 bg-gray-100 rounded-2xl">
+                    <button id="tab-auto" class="tab-btn active flex-1 px-6 py-3 rounded-xl text-indigo-700 font-semibold bg-white shadow-sm" onclick="switchTab('auto')">
+                        <div class="flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            <span>智能转换</span>
+                        </div>
+                    </button>
+                    <button id="tab-manual" class="tab-btn flex-1 px-6 py-3 rounded-xl text-gray-500 font-medium" onclick="switchTab('manual')">
+                        <div class="flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                            <span>手动录入</span>
+                        </div>
+                    </button>
                 </div>
-            </div>
-        </main>
+
+                <!-- Auto Convert Section -->
+                <div id="section-auto" class="space-y-5">
+                    <div class="relative">
+                        <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
+                            <span class="w-2 h-2 bg-indigo-500 rounded-full pulse-dot"></span>
+                            输入参考文献 (每行一条)
+                        </label>
+                        <textarea id="input-raw" rows="8" class="input-field w-full p-4 rounded-2xl bg-white/80 resize-none text-gray-700 placeholder-gray-400" placeholder="粘贴您的参考文献，支持 APA、MLA、IEEE 等主流格式...&#10;&#10;示例：&#10;Smith, J. (2023). Deep learning for medical imaging. Journal of AI Research, 45(3), 234-251."></textarea>
+                        <div class="absolute bottom-4 right-4 text-xs text-gray-400">
+                            <span id="line-count">0</span> 条记录
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="convertRaw()" class="btn-primary text-white font-semibold py-3 px-8 rounded-xl flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            转换格式
+                        </button>
+                        <button onclick="loadDemo()" class="btn-secondary bg-white border-2 border-gray-200 text-gray-700 font-medium py-3 px-6 rounded-xl flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            填入示例
+                        </button>
+                        <button onclick="clearInput()" class="btn-secondary bg-white border-2 border-gray-200 text-gray-500 font-medium py-3 px-6 rounded-xl flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            清空
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Manual Input Section -->
+                <div id="section-manual" class="space-y-5 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="md:col-span-2">
+                            <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                <span class="w-2 h-2 bg-purple-500 rounded-full"></span>
+                                文献类型
+                            </label>
+                            <select id="man-type" class="input-field block w-full rounded-xl p-3 bg-white appearance-none cursor-pointer">
+                                <option value="J">📄 期刊文章 [J]</option>
+                                <option value="C">📋 会议论文 [C]</option>
+                                <option value="M">📚 专著/书籍 [M]</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                作者
+                            </label>
+                            <input type="text" id="man-author" class="input-field block w-full rounded-xl p-3 bg-white" placeholder="例：张三, 李四">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                                题名
+                            </label>
+                            <input type="text" id="man-title" class="input-field block w-full rounded-xl p-3 bg-white" placeholder="文献标题">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                                <span class="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                来源 (刊名/会议名)
+                            </label>
+                            <input type="text" id="man-source" class="input-field block w-full rounded-xl p-3 bg-white" placeholder="期刊名称或会议名称">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600 mb-2 block">年份</label>
+                            <input type="text" id="man-year" class="input-field block w-full rounded-xl p-3 bg-white" placeholder="2024">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600 mb-2 block">卷(期)</label>
+                            <input type="text" id="man-vol" class="input-field block w-full rounded-xl p-3 bg-white" placeholder="45(3)">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600 mb-2 block">出版地</label>
+                            <input type="text" id="man-city" class="input-field block w-full rounded-xl p-3 bg-white" placeholder="北京">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600 mb-2 block">出版社</label>
+                            <input type="text" id="man-publisher" class="input-field block w-full rounded-xl p-3 bg-white" placeholder="科学出版社">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-sm font-medium text-gray-600 mb-2 block">页码</label>
+                            <input type="text" id="man-pages" class="input-field block w-full rounded-xl p-3 bg-white" placeholder="100-120">
+                        </div>
+                    </div>
+                    <button onclick="convertManual()" class="btn-primary text-white font-semibold py-3 px-8 rounded-xl flex items-center gap-2 mt-2" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        生成引用
+                    </button>
+                </div>
+
+                <!-- Output Section -->
+                <div id="output-container" class="output-card rounded-2xl p-6 hidden space-y-6">
+                    <!-- GB/T Output -->
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">GB/T 7714-2015 格式</h3>
+                                    <p class="text-sm text-gray-500">国标参考文献格式</p>
+                                </div>
+                            </div>
+                            <button onclick="copyOutput('output-content-text')" class="copy-btn text-sm text-indigo-600 font-medium bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-200 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                                复制
+                            </button>
+                        </div>
+                        <div id="output-content-html" class="reference-output text-gray-700 bg-white rounded-xl p-4 border border-gray-100"></div>
+                        <textarea id="output-content-text" class="hidden"></textarea>
+                    </div>
+
+                    <!-- BibTeX Output -->
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">BibTeX 格式</h3>
+                                    <p class="text-sm text-gray-500">LaTeX 引用格式</p>
+                                </div>
+                            </div>
+                            <button onclick="copyBibtex()" class="copy-btn text-sm text-emerald-600 font-medium bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-200 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                                复制
+                            </button>
+                        </div>
+                        <div id="output-bibtex" class="bibtex-output text-sm p-4 rounded-xl overflow-x-auto whitespace-pre"></div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Footer -->
+            <footer class="px-8 py-4 border-t border-gray-100 bg-gray-50/50">
+                <p class="text-center text-sm text-gray-500">
+                    支持 APA · MLA · IEEE · Chicago 等主流学术格式自动识别转换
+                </p>
+            </footer>
+        </div>
+
+        <!-- Credits -->
+        <p class="text-center text-xs text-gray-400 mt-6">
+            GB/T 7714-2015 参考文献生成器 · 全能版
+        </p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-xl shadow-lg opacity-0 transition-opacity duration-300 flex items-center gap-2 pointer-events-none">
+        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>
+        <span id="toast-message">已复制到剪贴板</span>
     </div>
 
     <script>
+        // Update line count
+        document.getElementById('input-raw').addEventListener('input', function() {
+            const lines = this.value.split('\n').filter(l => l.trim()).length;
+            document.getElementById('line-count').textContent = lines;
+        });
+
         function switchTab(mode) {
             const auto = mode === 'auto';
             document.getElementById('section-auto').classList.toggle('hidden', !auto);
             document.getElementById('section-manual').classList.toggle('hidden', auto);
-            document.getElementById('tab-auto').className = auto ? "px-6 py-3 text-indigo-700 border-b-2 border-indigo-700 font-medium" : "px-6 py-3 text-gray-500 font-medium";
-            document.getElementById('tab-manual').className = !auto ? "px-6 py-3 text-indigo-700 border-b-2 border-indigo-700 font-medium" : "px-6 py-3 text-gray-500 font-medium";
+            
+            const tabAuto = document.getElementById('tab-auto');
+            const tabManual = document.getElementById('tab-manual');
+            
+            if (auto) {
+                tabAuto.className = "tab-btn active flex-1 px-6 py-3 rounded-xl text-indigo-700 font-semibold bg-white shadow-sm";
+                tabManual.className = "tab-btn flex-1 px-6 py-3 rounded-xl text-gray-500 font-medium";
+            } else {
+                tabManual.className = "tab-btn active flex-1 px-6 py-3 rounded-xl text-indigo-700 font-semibold bg-white shadow-sm";
+                tabAuto.className = "tab-btn flex-1 px-6 py-3 rounded-xl text-gray-500 font-medium";
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2000);
+        }
+
+        function clearInput() {
+            document.getElementById('input-raw').value = '';
+            document.getElementById('line-count').textContent = '0';
+            document.getElementById('output-container').classList.add('hidden');
         }
 
         // --- Core Parsing Logic ---
@@ -95,7 +437,7 @@
             const hasEtAl = /et al/i.test(authorStr);
             let cleanStr = authorStr
                 .replace(/,?\s*(et al\.?|and others)/gi, '')
-                .replace(/\s+(&|and)\s+/g, ', ') // Handle "&" in APA
+                .replace(/\s+(&|and)\s+/g, ', ')
                 .replace(/[\(\)\[\]"]/g, '')
                 .trim();
             
@@ -126,7 +468,6 @@
                 let n = a.name ? a.name.split(/[\s\.\-]+/).map(p => p.charAt(0).toUpperCase()).join(' ') : "";
                 return (s + " " + n).trim();
             });
-            // GB/T 7714-2015: More than 3 authors -> show first 3 + ", 等" (Chinese) or ", et al" (English)
             if (formatted.length > 3 || (parsed.hasEtAl && formatted.length >= 1)) {
                 const suffix = lang === 'zh' ? ", 等" : ", et al";
                 return formatted.slice(0, 3).join(', ') + suffix;
@@ -134,16 +475,12 @@
             return formatted.join(', ');
         }
 
-        // Detect if text is primarily Chinese
         function detectLanguage(text) {
             const chineseChars = (text.match(/[一-龥]/g) || []).length;
             return chineseChars > 5 ? 'zh' : 'en';
         }
 
-        // --- Parser 1: APA Conference/Book Chapter (你的新输入格式) ---
         function parseAPA_Conference(text) {
-            // Pattern: Authors (Year, Month). Title. In Source (pp. xx-xx). City: Publisher.
-            // 1. Find Date: (2024) or (2024, October)
             const dateMatch = text.match(/\((\d{4})[^)]*\)\./);
             if (!dateMatch) return null;
             
@@ -152,7 +489,6 @@
             const authors = parts[0].trim();
             let rest = parts[1].trim(); 
 
-            // 2. Find ". In " marker
             const inMarker = ". In ";
             const inIndex = rest.indexOf(inMarker);
             if (inIndex === -1) return null;
@@ -160,7 +496,6 @@
             const title = rest.substring(0, inIndex).trim();
             const sourceFull = rest.substring(inIndex + inMarker.length).trim();
             
-            // 3. Extract Pages (pp. 710-720)
             let pages = "";
             let sourceName = sourceFull;
             let pubInfo = "";
@@ -172,13 +507,11 @@
                 sourceName = sourceFull.substring(0, pIndex).trim();
                 pubInfo = sourceFull.substring(pIndex + pagesMatch[0].length).trim();
             } else {
-                // Try to split by last dot if no pages found
                 let lastDot = sourceFull.lastIndexOf('.');
                 sourceName = sourceFull.substring(0, lastDot);
                 pubInfo = sourceFull.substring(lastDot);
             }
 
-            // 4. Extract City and Publisher from pubInfo (. Cham: Springer...)
             pubInfo = pubInfo.replace(/^\.\s*/, '').replace(/\.$/, '');
             let city = "", publisher = pubInfo;
             if (pubInfo.includes(':')) {
@@ -190,11 +523,10 @@
             return { authors, title, source: sourceName, year, pages, city, publisher, type: "C" };
         }
 
-        // --- Parser 2: MLA Book/Conference ---
         function parseMLA_Book_Conf(text) {
             const yearRegex = /,\s*(\d{4})\.?$/;
             const yearMatch = text.match(yearRegex);
-            if (!yearMatch || !text.includes('"')) return null; // Must have quotes for MLA title
+            if (!yearMatch || !text.includes('"')) return null;
             
             const year = yearMatch[1];
             const titleMatch = text.match(/"([^"]+)"/);
@@ -213,27 +545,23 @@
                     source = prePub.substring(0, lastDot).trim();
                     city = prePub.substring(lastDot + 1).trim();
                 } else {
-                    source = prePub; // Assume whole thing is source
+                    source = prePub;
                 }
             }
             return { authors, title, source, year, city, publisher, type: source.match(/conference|proceeding/i) ? "C" : "M" };
         }
 
-        // --- Parser 3: Standard Journal ---
         function parseStandardJournal(text) {
-            // Check for Vol(Issue) or Vol.Issue pattern
             if (!text.match(/\d+\s*\(\d+\)/) && !text.match(/\d+\.\d+/)) return null; 
             
-            // Basic extraction logic...
             let yearMatch = text.match(/\((19|20)\d{2}\)/);
-            if (!yearMatch) yearMatch = text.match(/(19|20)\d{2}/); // relaxed
+            if (!yearMatch) yearMatch = text.match(/(19|20)\d{2}/);
             if (!yearMatch) return null;
             
             const year = yearMatch[0].replace(/[\(\)]/g,'');
             let parts = text.split(yearMatch[0]);
             if(parts.length < 2) return null;
 
-            // Simple heuristic for Author/Title split if quotes exist
             let title = "", authors = "", source = "";
             if (text.includes('"')) {
                 let tm = text.match(/"([^"]+)"/);
@@ -241,12 +569,10 @@
                 authors = text.split('"')[0].trim().replace(/\.$/, '');
                 source = text.split('"')[2].split(yearMatch[0])[0].trim();
             } else {
-                // APA Style fallback: Author (Year). Title. Source
                 if (text.indexOf('(' + year + ')') > -1) {
                    authors = parts[0].trim();
-                   let rest = parts[1].trim(); // . Title. Source...
+                   let rest = parts[1].trim();
                    if (rest.startsWith('.')) rest = rest.substring(1).trim();
-                   // Find first dot to split Title and Source
                    let firstDot = rest.indexOf('. ');
                    if (firstDot > -1) {
                        title = rest.substring(0, firstDot);
@@ -255,7 +581,6 @@
                 }
             }
             
-            // Extract pages/vol from the end
             let endPart = text.substring(text.lastIndexOf(year) + 4);
             let vol = "", pages = "";
             let volMatch = endPart.match(/(\d+(\(\d+\))?)/);
@@ -266,8 +591,6 @@
             return { authors, title, source: source.replace(/^[.,\s]+|[.,\s]+$/g, ''), year, vol, pages, type: "J" };
         }
 
-        // --- Output Generation ---
-        // Validate parsed data - returns error message if invalid, null if valid
         function validateParsedData(data) {
             if (!data.authors || !data.authors.trim()) {
                 return "缺少作者信息";
@@ -278,7 +601,6 @@
             if (!data.year || !data.year.trim()) {
                 return "缺少年份信息";
             }
-            // For conference papers (C) and book chapters (M with source), pages are required per GB/T 7714-2015
             if ((data.type === 'C' || (data.type === 'M' && data.source)) && (!data.pages || !data.pages.trim())) {
                 return "会议论文或专著中的章节必须著录起止页码";
             }
@@ -289,22 +611,19 @@
             let authors = formatAuthors(data.authors, lang);
             let title = data.title.replace(/\.$/, '');
             let source = data.source.replace(/^[.,\s]+|[.,\s]+$/g, '');
-            // Capitalize Source
             source = source.split(' ').map(w => w.length > 3 ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
 
             let plain = "", html = "";
             if (data.type === 'C' || data.type === 'M') {
                 let pub = data.city ? `${data.city}: ${data.publisher}` : data.publisher;
                 let pageStr = data.pages ? `: ${data.pages}` : "";
-                // GB/T 7714-2015 Format for C/M: Title[Type]//Source. City: Publisher, Year: Pages.
-                // Note: Use "//" to connect 析出文献 (paper title) and 源文献 (conference/book name)
                 plain = `[${idx}] ${authors}. ${title}[${data.type}]//${source}. ${pub}, ${data.year}${pageStr}.`;
-                html = `[${idx}] ${authors}. ${title}[${data.type}]//<span class="journal-name">${source}</span>. ${pub}, ${data.year}${pageStr}.`;
+                html = `<div class="reference-item p-3 rounded-lg">[${idx}] ${authors}. ${title}[${data.type}]//<span class="journal-name">${source}</span>. ${pub}, ${data.year}${pageStr}.</div>`;
             } else {
                 let volStr = data.vol ? `, ${data.vol}` : "";
                 let pageStr = data.pages ? `: ${data.pages}` : "";
                 plain = `[${idx}] ${authors}. ${title}[J]. ${source}, ${data.year}${volStr}${pageStr}.`;
-                html = `[${idx}] ${authors}. ${title}[J]. <span class="journal-name">${source}</span>, ${data.year}${volStr}${pageStr}.`;
+                html = `<div class="reference-item p-3 rounded-lg">[${idx}] ${authors}. ${title}[J]. <span class="journal-name">${source}</span>, ${data.year}${volStr}${pageStr}.</div>`;
             }
             return { plain, html };
         }
@@ -335,29 +654,25 @@
 
             lines.forEach((line, i) => {
                 let clean = line.replace(/^(\[\d+\]|\d+\.)\s*/, '').trim();
-                // Detect language for author formatting
                 const lang = detectLanguage(clean);
 
-                // 优先级: 1. APA会议 2. MLA会议/书 3. 期刊
                 let parsed = parseAPA_Conference(clean);
                 if (!parsed) parsed = parseMLA_Book_Conf(clean);
                 if (!parsed) parsed = parseStandardJournal(clean);
 
                 if (parsed) {
-                    // Validate the parsed data before formatting
                     const validationError = validateParsedData(parsed);
                     if (validationError) {
-                        html.push(`<div class="text-red-600 bg-red-50 p-2 rounded">[Error] 行 ${i+1}: ${validationError}</div>`);
+                        html.push(`<div class="text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 flex items-center gap-2"><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span>行 ${i+1}: ${validationError}</span></div>`);
                         plain.push(`[ERROR] Line ${i+1}: ${validationError}`);
                         return;
                     }
                     let res = formatGBT(parsed, i+1, lang);
-                    html.push(`<div class="p-2 hover:bg-gray-100 rounded">${res.html}</div>`);
+                    html.push(res.html);
                     plain.push(res.plain);
                     bib.push(formatBibTeX(parsed, i+1));
                 } else {
-                    // Format not recognized - report error instead of forcing conversion
-                    html.push(`<div class="text-red-600 bg-red-50 p-2 rounded">[Error] 行 ${i+1}: 格式未识别，无法解析。请检查输入格式是否符合 APA/MLA/标准期刊格式。</div>`);
+                    html.push(`<div class="text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200 flex items-center gap-2"><svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><span>行 ${i+1}: 格式未识别，请检查输入格式</span></div>`);
                     plain.push(`[ERROR] Line ${i+1}: Format not recognized`);
                 }
             });
@@ -366,6 +681,9 @@
             document.getElementById('output-content-text').value = plain.join('\n');
             document.getElementById('output-bibtex').innerText = bib.join('\n\n');
             document.getElementById('output-container').classList.remove('hidden');
+            
+            // Scroll to output
+            document.getElementById('output-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         
         function convertManual() {
@@ -381,17 +699,15 @@
                 publisher: document.getElementById('man-publisher').value
             };
 
-            // Validate the data
             const validationError = validateParsedData(d);
             if (validationError) {
-                document.getElementById('output-content-html').innerHTML = `<div class="text-red-600 bg-red-50 p-2 rounded">[Error] ${validationError}</div>`;
+                document.getElementById('output-content-html').innerHTML = `<div class="text-red-600 bg-red-50 p-3 rounded-lg border border-red-200 flex items-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span>${validationError}</span></div>`;
                 document.getElementById('output-content-text').value = `[ERROR] ${validationError}`;
                 document.getElementById('output-bibtex').innerText = '';
                 document.getElementById('output-container').classList.remove('hidden');
                 return;
             }
 
-            // Detect language for author formatting
             const lang = detectLanguage(d.authors + d.title + d.source);
 
             let res = formatGBT(d, 1, lang);
@@ -403,12 +719,18 @@
 
         function copyOutput(id) {
             let t = id.includes('text') ? document.getElementById(id).value : document.getElementById(id).innerText;
-            navigator.clipboard.writeText(t).then(()=>alert('已复制'));
+            navigator.clipboard.writeText(t).then(() => showToast('已复制到剪贴板'));
+        }
+
+        function copyBibtex() {
+            let t = document.getElementById('output-bibtex').innerText;
+            navigator.clipboard.writeText(t).then(() => showToast('BibTeX 已复制'));
         }
 
         function loadDemo() {
             document.getElementById('input-raw').value = `Acebes, C., Moustafa, A. H., Camara, O., & Galdran, A. (2024, October). The centerline-cross entropy loss for vessel-like structure segmentation: Better topology consistency without sacrificing accuracy. In International Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 710-720). Cham: Springer Nature Switzerland.
 Smith, J. (2023). Deep learning for medical imaging. Journal of AI Research, 45(3), 234-251.`;
+            document.getElementById('line-count').textContent = '2';
         }
     </script>
 </body>
