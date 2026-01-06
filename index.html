@@ -434,29 +434,54 @@
 
         function parseAuthorsToObjects(authorStr) {
             if (!authorStr) return [];
-            const hasEtAl = /et al/i.test(authorStr);
+            
+            // Check for et al, ellipsis (...), or unicode ellipsis (…)
+            const hasEtAl = /et\s*al|\.{2,}|…/i.test(authorStr);
+            
+            // Clean up the string - remove et al, ellipsis, "and others"
             let cleanStr = authorStr
-                .replace(/,?\s*(et al\.?|and others)/gi, '')
+                .replace(/,?\s*(et\s*al\.?|and others)/gi, '')
+                .replace(/,?\s*\.{2,}\s*(&|and)?\s*/g, ', ')  // Remove ... and optional & after it
+                .replace(/,?\s*…\s*(&|and)?\s*/g, ', ')       // Remove … (unicode ellipsis)
                 .replace(/\s+(&|and)\s+/g, ', ')
                 .replace(/[\(\)\[\]"]/g, '')
-                .trim();
+                .replace(/,\s*,/g, ',')  // Clean up double commas
+                .trim()
+                .replace(/^,\s*|,\s*$/g, ''); // Remove leading/trailing commas
             
-            let segments = cleanStr.split(/,\s*/).filter(s => s);
+            let segments = cleanStr.split(/,\s*/).filter(s => s.trim());
             let mergedAuthors = [];
             
             for (let i = 0; i < segments.length; i++) {
-                let seg = segments[i];
+                let seg = segments[i].trim();
+                if (!seg) continue;
+                
+                // Check if this looks like "Surname" followed by initials/given name
                 let isSurnameLike = /^[A-Z][a-z\-\']+$/.test(seg);
-                if (isSurnameLike && i + 1 < segments.length && !segments[i+1].includes(',') && !/^\d/.test(segments[i+1])) {
-                    mergedAuthors.push({ surname: seg, name: segments[i+1] });
-                    i++; 
-                } else if (seg.includes(' ')) {
+                
+                if (isSurnameLike && i + 1 < segments.length) {
+                    let nextSeg = segments[i+1].trim();
+                    // Check if next segment looks like initials or a first name (not another surname pattern)
+                    let isInitialsOrName = /^[A-Z]\.?(\s*[A-Z]\.?)*$/.test(nextSeg) || 
+                                           /^[A-Z][a-z]+$/.test(nextSeg);
+                    if (isInitialsOrName) {
+                        mergedAuthors.push({ surname: seg, name: nextSeg });
+                        i++; 
+                        continue;
+                    }
+                }
+                
+                // Check if segment contains space (like "John Smith" or "J. Smith")
+                if (seg.includes(' ')) {
                     let parts = seg.split(/\s+/);
+                    // Last part is surname
                     mergedAuthors.push({ surname: parts[parts.length - 1], name: parts.slice(0, parts.length - 1).join(' ') });
                 } else {
+                    // Single name - treat as surname
                     mergedAuthors.push({ surname: seg, name: "" });
                 }
             }
+            
             mergedAuthors.hasEtAl = hasEtAl;
             return mergedAuthors;
         }
@@ -465,7 +490,7 @@
             let parsed = parseAuthorsToObjects(authorStr);
             let formatted = parsed.map(a => {
                 let s = a.surname.toUpperCase();
-                let n = a.name ? a.name.split(/[\s\.\-]+/).map(p => p.charAt(0).toUpperCase()).join(' ') : "";
+                let n = a.name ? a.name.split(/[\s\.\-]+/).filter(p => p).map(p => p.charAt(0).toUpperCase()).join(' ') : "";
                 return (s + " " + n).trim();
             });
             if (formatted.length > 3 || (parsed.hasEtAl && formatted.length >= 1)) {
@@ -475,9 +500,121 @@
             return formatted.join(', ');
         }
 
+        // Format authors for BibTeX - uses "and" connector, "and others" for et al
+        function formatAuthorsForBibtex(authorStr) {
+            let parsed = parseAuthorsToObjects(authorStr);
+            let formatted = parsed.map(a => {
+                // BibTeX format: Surname, Firstname
+                let surname = a.surname;
+                let name = a.name || "";
+                if (name) {
+                    return `${surname}, ${name}`;
+                }
+                return surname;
+            });
+            
+            // If there are many authors or has et al, use "and others"
+            if (parsed.hasEtAl) {
+                if (formatted.length > 3) {
+                    return formatted.slice(0, 3).join(' and ') + ' and others';
+                }
+                return formatted.join(' and ') + ' and others';
+            }
+            
+            return formatted.join(' and ');
+        }
+
         function detectLanguage(text) {
             const chineseChars = (text.match(/[一-龥]/g) || []).length;
             return chineseChars > 5 ? 'zh' : 'en';
+        }
+
+        // Parse MLA Journal format: Authors. "Title." Journal Volume.Issue (Year): Pages.
+        function parseMLA_Journal(text) {
+            if (!text.includes('"')) return null;
+            
+            // Extract title in quotes
+            const titleMatch = text.match(/"([^"]+)"/);
+            if (!titleMatch) return null;
+            
+            const title = titleMatch[1].replace(/\.$/, '');
+            const authors = text.substring(0, text.indexOf('"')).trim().replace(/\.$/, '');
+            
+            // Get everything after the closing quote
+            let afterTitle = text.substring(text.indexOf(titleMatch[0]) + titleMatch[0].length).trim();
+            
+            // Remove leading period if present
+            afterTitle = afterTitle.replace(/^\.\s*/, '');
+            
+            // Pattern 1: Journal Volume.Issue (Year): Pages.
+            // Example: Quantitative imaging in medicine and surgery 14.12 (2024): 9620.
+            const mlaPatternWithPages = /^([A-Za-z][^0-9]*?)\s+(\d+)(?:\.(\d+))?\s*\((\d{4})\):\s*(\d+(?:[–\-]\d+)?)\s*\.?\s*$/;
+            let match = afterTitle.match(mlaPatternWithPages);
+            
+            if (match) {
+                const volume = match[2];
+                const issue = match[3];
+                const volStr = issue ? `${volume}(${issue})` : volume;
+                const source = match[1].trim().replace(/\.$/, '');
+                
+                return {
+                    authors,
+                    title,
+                    source: source,
+                    vol: volStr,
+                    year: match[4],
+                    pages: match[5],
+                    type: "J"
+                };
+            }
+            
+            // Pattern 2: Journal Volume (Year). - No pages, common for conference proceedings
+            // Example: Advances in neural information processing systems 25 (2012).
+            const mlaPatternNoPages = /^([A-Za-z].*?)\s+(\d+)\s*\((\d{4})\)\s*\.?\s*$/;
+            match = afterTitle.match(mlaPatternNoPages);
+            
+            if (match) {
+                const source = match[1].trim().replace(/\.$/, '');
+                
+                return {
+                    authors,
+                    title,
+                    source: source,
+                    vol: match[2],
+                    year: match[3],
+                    pages: "",
+                    type: "J"
+                };
+            }
+            
+            // Pattern 3: Just Journal (Year) - No volume, no pages
+            // Example: Some Journal Name (2024).
+            const mlaPatternSimple = /^([A-Za-z][^()]+?)\s*\((\d{4})\)\s*\.?\s*$/;
+            match = afterTitle.match(mlaPatternSimple);
+            
+            if (match) {
+                let source = match[1].trim().replace(/\.$/, '');
+                let vol = "";
+                
+                // Check if source ends with a number (volume)
+                const trailingVolMatch = source.match(/^(.+?)\s+(\d+)\s*$/);
+                if (trailingVolMatch) {
+                    source = trailingVolMatch[1].trim();
+                    vol = trailingVolMatch[2];
+                }
+                
+                return {
+                    authors,
+                    title,
+                    source: source,
+                    vol: vol,
+                    year: match[2],
+                    pages: "",
+                    type: "J"
+                };
+            }
+            
+            return null;
         }
 
         function parseAPA_Conference(text) {
@@ -500,9 +637,9 @@
             let sourceName = sourceFull;
             let pubInfo = "";
             
-            const pagesMatch = sourceFull.match(/\(pp?\.?\s*([\d\-]+)\)/);
+            const pagesMatch = sourceFull.match(/\(pp?\.?\s*([\d\-–]+)\)/);
             if (pagesMatch) {
-                pages = pagesMatch[1];
+                pages = pagesMatch[1].replace('–', '-');
                 let pIndex = sourceFull.indexOf(pagesMatch[0]);
                 sourceName = sourceFull.substring(0, pIndex).trim();
                 pubInfo = sourceFull.substring(pIndex + pagesMatch[0].length).trim();
@@ -551,8 +688,83 @@
             return { authors, title, source, year, city, publisher, type: source.match(/conference|proceeding/i) ? "C" : "M" };
         }
 
+        // Parse APA Journal format: Authors (Year). Title. Journal, Volume(Issue), Pages.
+        function parseAPA_Journal(text) {
+            // Must have year in parentheses
+            const yearMatch = text.match(/\((\d{4})\)\./);
+            if (!yearMatch) return null;
+            
+            const year = yearMatch[1];
+            const yearPos = text.indexOf(yearMatch[0]);
+            
+            const authors = text.substring(0, yearPos).trim();
+            let rest = text.substring(yearPos + yearMatch[0].length).trim();
+            
+            // Pattern: Title. Journal, Volume(Issue), Pages.
+            // We need to find: journal name, volume, issue (optional), pages
+            // Look for pattern at the end: , Volume(Issue), Pages. or , Volume, Pages.
+            
+            // Try pattern with issue: , Vol(Issue), Pages
+            let endPattern = /,\s*(\d+)\((\d+)\),\s*(\d+(?:[–\-]\d+)?)\s*\.?\s*$/;
+            let endMatch = rest.match(endPattern);
+            
+            if (!endMatch) {
+                // Try pattern without issue: , Vol, Pages
+                endPattern = /,\s*(\d+),\s*(\d+(?:[–\-]\d+)?)\s*\.?\s*$/;
+                endMatch = rest.match(endPattern);
+                
+                if (endMatch) {
+                    // No issue number
+                    const beforeEnd = rest.substring(0, rest.indexOf(endMatch[0]));
+                    const lastDotIndex = beforeEnd.lastIndexOf('. ');
+                    
+                    let title, source;
+                    if (lastDotIndex !== -1) {
+                        title = beforeEnd.substring(0, lastDotIndex).trim();
+                        source = beforeEnd.substring(lastDotIndex + 2).trim();
+                    } else {
+                        return null;
+                    }
+                    
+                    return {
+                        authors,
+                        title: title.replace(/\.$/, ''),
+                        source: source.replace(/\.$/, '').replace(/,\s*$/, ''),
+                        year,
+                        vol: endMatch[1],
+                        pages: endMatch[2].replace('–', '-'),
+                        type: "J"
+                    };
+                }
+                return null;
+            }
+            
+            // Found pattern with issue
+            const beforeEnd = rest.substring(0, rest.indexOf(endMatch[0]));
+            const lastDotIndex = beforeEnd.lastIndexOf('. ');
+            
+            let title, source;
+            if (lastDotIndex !== -1) {
+                title = beforeEnd.substring(0, lastDotIndex).trim();
+                source = beforeEnd.substring(lastDotIndex + 2).trim();
+            } else {
+                return null;
+            }
+            
+            return {
+                authors,
+                title: title.replace(/\.$/, ''),
+                source: source.replace(/\.$/, '').replace(/,\s*$/, ''),
+                year,
+                vol: `${endMatch[1]}(${endMatch[2]})`,
+                pages: endMatch[3].replace('–', '-'),
+                type: "J"
+            };
+        }
+
         function parseStandardJournal(text) {
-            if (!text.match(/\d+\s*\(\d+\)/) && !text.match(/\d+\.\d+/)) return null; 
+            // Generic fallback parser
+            if (!text.match(/\d+\s*\(\d+\)/) && !text.match(/\d+\.\d+/) && !text.match(/\d+,\s*\d+/)) return null; 
             
             let yearMatch = text.match(/\((19|20)\d{2}\)/);
             if (!yearMatch) yearMatch = text.match(/(19|20)\d{2}/);
@@ -585,8 +797,8 @@
             let vol = "", pages = "";
             let volMatch = endPart.match(/(\d+(\(\d+\))?)/);
             if (volMatch) vol = volMatch[0];
-            let pageMatch = endPart.match(/:?\.?\s*([\d\-]+)$/);
-            if (pageMatch) pages = pageMatch[1];
+            let pageMatch = endPart.match(/:?\.?\s*([\d\-–]+)$/);
+            if (pageMatch) pages = pageMatch[1].replace('–', '-');
             
             return { authors, title, source: source.replace(/^[.,\s]+|[.,\s]+$/g, ''), year, vol, pages, type: "J" };
         }
@@ -601,9 +813,7 @@
             if (!data.year || !data.year.trim()) {
                 return "缺少年份信息";
             }
-            if ((data.type === 'C' || (data.type === 'M' && data.source)) && (!data.pages || !data.pages.trim())) {
-                return "会议论文或专著中的章节必须著录起止页码";
-            }
+            // Pages are optional for conferences (some just have paper ID/number)
             return null;
         }
 
@@ -614,12 +824,20 @@
             source = source.split(' ').map(w => w.length > 3 ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ');
 
             let plain = "", html = "";
-            if (data.type === 'C' || data.type === 'M') {
+            if (data.type === 'C') {
+                // Conference proceedings format
                 let pub = data.city ? `${data.city}: ${data.publisher}` : data.publisher;
                 let pageStr = data.pages ? `: ${data.pages}` : "";
-                plain = `[${idx}] ${authors}. ${title}[${data.type}]//${source}. ${pub}, ${data.year}${pageStr}.`;
-                html = `<div class="reference-item p-3 rounded-lg">[${idx}] ${authors}. ${title}[${data.type}]//<span class="journal-name">${source}</span>. ${pub}, ${data.year}${pageStr}.</div>`;
+                plain = `[${idx}] ${authors}. ${title}[C]//${source}. ${pub}, ${data.year}${pageStr}.`;
+                html = `<div class="reference-item p-3 rounded-lg">[${idx}] ${authors}. ${title}[C]//<span class="journal-name">${source}</span>. ${pub}, ${data.year}${pageStr}.</div>`;
+            } else if (data.type === 'M') {
+                // Book format
+                let pub = data.city ? `${data.city}: ${data.publisher}` : data.publisher;
+                let pageStr = data.pages ? `: ${data.pages}` : "";
+                plain = `[${idx}] ${authors}. ${title}[M]//${source}. ${pub}, ${data.year}${pageStr}.`;
+                html = `<div class="reference-item p-3 rounded-lg">[${idx}] ${authors}. ${title}[M]//<span class="journal-name">${source}</span>. ${pub}, ${data.year}${pageStr}.</div>`;
             } else {
+                // Journal article format
                 let volStr = data.vol ? `, ${data.vol}` : "";
                 let pageStr = data.pages ? `: ${data.pages}` : "";
                 plain = `[${idx}] ${authors}. ${title}[J]. ${source}, ${data.year}${volStr}${pageStr}.`;
@@ -629,15 +847,31 @@
         }
 
         function formatBibTeX(data, idx) {
-            let key = (data.authors.split(/[, ]/)[0] || "auth").replace(/[^a-z]/gi,'').toLowerCase() + data.year;
+            let firstAuthor = data.authors.split(/[,\s]/)[0] || "auth";
+            let key = firstAuthor.replace(/[^a-z]/gi,'').toLowerCase() + data.year;
             let type = data.type === 'M' ? 'book' : (data.type === 'C' ? 'inproceedings' : 'article');
             let bib = `@${type}{${key}${idx},\n`;
-            bib += `  author = {${data.authors.replace(/&/g, 'and').replace(/et al\.?/gi, 'and others')}},\n`;
-            bib += `  title = {${data.title}},\n`;
+            bib += `  author = {${formatAuthorsForBibtex(data.authors)}},\n`;
+            bib += `  title = {${data.title.replace(/\.$/, '')}},\n`;
             if (type === 'article') {
                 bib += `  journal = {${data.source}},\n`;
+                if(data.vol) {
+                    // Parse volume and issue from vol string like "14(12)"
+                    const volIssueMatch = data.vol.match(/(\d+)\((\d+)\)/);
+                    if (volIssueMatch) {
+                        bib += `  volume = {${volIssueMatch[1]}},\n`;
+                        bib += `  number = {${volIssueMatch[2]}},\n`;
+                    } else {
+                        bib += `  volume = {${data.vol}},\n`;
+                    }
+                }
+            } else if (type === 'inproceedings') {
+                bib += `  booktitle = {${data.source}},\n`;
                 if(data.vol) bib += `  volume = {${data.vol}},\n`;
+                if(data.publisher) bib += `  publisher = {${data.publisher}},\n`;
+                if(data.city) bib += `  address = {${data.city}},\n`;
             } else {
+                // book
                 bib += `  booktitle = {${data.source}},\n`;
                 if(data.publisher) bib += `  publisher = {${data.publisher}},\n`;
                 if(data.city) bib += `  address = {${data.city}},\n`;
@@ -656,8 +890,22 @@
                 let clean = line.replace(/^(\[\d+\]|\d+\.)\s*/, '').trim();
                 const lang = detectLanguage(clean);
 
-                let parsed = parseAPA_Conference(clean);
+                // Try parsers in order of specificity
+                let parsed = null;
+                
+                // First try MLA Journal (has quotes and Volume.Issue pattern)
+                parsed = parseMLA_Journal(clean);
+                
+                // Then try APA Journal (has year in parentheses at start, comma-separated vol/pages at end)
+                if (!parsed) parsed = parseAPA_Journal(clean);
+                
+                // Then try APA Conference
+                if (!parsed) parsed = parseAPA_Conference(clean);
+                
+                // Then try MLA Book/Conference
                 if (!parsed) parsed = parseMLA_Book_Conf(clean);
+                
+                // Finally try generic parser
                 if (!parsed) parsed = parseStandardJournal(clean);
 
                 if (parsed) {
@@ -728,9 +976,11 @@
         }
 
         function loadDemo() {
-            document.getElementById('input-raw').value = `Acebes, C., Moustafa, A. H., Camara, O., & Galdran, A. (2024, October). The centerline-cross entropy loss for vessel-like structure segmentation: Better topology consistency without sacrificing accuracy. In International Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 710-720). Cham: Springer Nature Switzerland.
-Smith, J. (2023). Deep learning for medical imaging. Journal of AI Research, 45(3), 234-251.`;
-            document.getElementById('line-count').textContent = '2';
+            document.getElementById('input-raw').value = `Teng, Zixuan, et al. "A literature review of artificial intelligence (AI) for medical image segmentation: from AI and explainable AI to trustworthy AI." Quantitative imaging in medicine and surgery 14.12 (2024): 9620.
+Teng, Z., Li, L., Xin, Z., Xiang, D., Huang, J., Zhou, H., ... & Chen, X. (2024). A literature review of artificial intelligence (AI) for medical image segmentation: from AI and explainable AI to trustworthy AI. Quantitative imaging in medicine and surgery, 14(12), 9620.
+Krizhevsky, Alex, Ilya Sutskever, and Geoffrey E. Hinton. "Imagenet classification with deep convolutional neural networks." Advances in neural information processing systems 25 (2012).
+Acebes, C., Moustafa, A. H., Camara, O., & Galdran, A. (2024, October). The centerline-cross entropy loss for vessel-like structure segmentation: Better topology consistency without sacrificing accuracy. In International Conference on Medical Image Computing and Computer-Assisted Intervention (pp. 710-720). Cham: Springer Nature Switzerland.`;
+            document.getElementById('line-count').textContent = '4';
         }
     </script>
 </body>
